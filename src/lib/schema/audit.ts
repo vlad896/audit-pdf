@@ -65,12 +65,9 @@ export type AuditReportInput = z.infer<typeof AuditReportSchema>;
 
 /** Format Zod errors for API response */
 export function formatZodErrors(error: z.ZodError): Array<{ path: string; message: string }> {
-  const issues =
-    'issues' in error
-      ? error.issues
-      : (error as { errors: Array<{ path: (string | number)[]; message?: string }> }).errors;
-  return issues.map((e: { path: (string | number)[]; message?: string }) => ({
-    path: e.path.length ? e.path.join('.') : 'root',
+  const issues = error.issues;
+  return issues.map((e) => ({
+    path: e.path.length ? e.path.map(String).join('.') : 'root',
     message: e.message ?? 'Invalid value',
   }));
 }
