@@ -32,6 +32,7 @@ const validReport = {
   totalIssues: 1,
   criticalCount: 1,
   statusText: 'Status',
+  locale: 'ru' as const,
   execSummaryParagraphs: ['Summary'],
   metrics: [{ value: '10', label: 'Metric', sub: 'Sub', color: 'blue' as const }],
   blocks: [validBlock],
@@ -100,6 +101,17 @@ describe('AuditReportSchema', () => {
       id: 0,
     });
     expect(result.success).toBe(false);
+  });
+
+  it('defaults locale to ru when omitted', () => {
+    const result = AuditReportSchema.safeParse({
+      ...validReport,
+      locale: undefined,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.locale).toBe('ru');
+    }
   });
 });
 

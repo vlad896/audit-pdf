@@ -7,6 +7,7 @@
 import { readFileSync } from 'fs';
 import path from 'path';
 import type { AuditReport, AuditIssue, AuditBlock, Severity } from '@/types/audit';
+import { getReportMessages } from '@/i18n/report';
 
 // ── CSS (read once at module load) ────────────────────────────────────────────
 // Inlined so the HTML is self-contained for Puppeteer (no external assets).
@@ -18,18 +19,25 @@ function pad(n: number): string {
   return String(n).padStart(2, '0');
 }
 
-function severityBadge(s: Severity): { cls: string; label: string } {
+function severityBadge(s: Severity, locale: AuditReport['locale']): { cls: string; label: string } {
+  const msg = getReportMessages(locale);
   const map: Record<Severity, { cls: string; label: string }> = {
-    critical: { cls: 'sev-critical', label: '● Критично' },
-    high: { cls: 'sev-high', label: '● Высокая' },
-    medium: { cls: 'sev-medium', label: '● Средняя' },
-    low: { cls: 'sev-low', label: '● Низкая' },
+    critical: { cls: 'sev-critical', label: msg.severityBadge.critical },
+    high: { cls: 'sev-high', label: msg.severityBadge.high },
+    medium: { cls: 'sev-medium', label: msg.severityBadge.medium },
+    low: { cls: 'sev-low', label: msg.severityBadge.low },
   };
   return map[s];
 }
 
-function severityTagLabel(s: Severity): string {
-  return { critical: 'Критическая', high: 'Высокая', medium: 'Средняя', low: 'Низкая' }[s];
+function severityTagLabel(s: Severity, locale: AuditReport['locale']): string {
+  const msg = getReportMessages(locale);
+  return {
+    critical: msg.severityTag.critical,
+    high: msg.severityTag.high,
+    medium: msg.severityTag.medium,
+    low: msg.severityTag.low,
+  }[s];
 }
 
 function tagClass(tag: string): string {
@@ -59,33 +67,39 @@ function metricColorClass(color: string): string {
 // ── Section builders ──────────────────────────────────────────────────────────
 
 function buildCover(d: AuditReport): string {
+  const locale = d.locale ?? 'ru';
+  const msg = getReportMessages(locale);
+  const issuesValue =
+    locale === 'en' ? `${d.totalIssues} issues` : `${d.totalIssues} точек роста`;
+  const criticalValue =
+    locale === 'en' ? `${d.criticalCount} critical` : `${d.criticalCount} критических`;
   return `
 <div class="cover">
   <div class="cover-issues-count">${d.totalIssues}</div>
-  <div class="cover-badge">Технический SEO-аудит</div>
-  <h1>Аудит сайта<br/><span>${d.clientName}</span></h1>
+  <div class="cover-badge">${msg.sections.coverBadge}</div>
+  <h1>${msg.sections.coverTitle}<br/><span>${d.clientName}</span></h1>
   <div class="cover-domain">${d.domain}</div>
   <div class="cover-divider"></div>
   <div class="cover-meta">
     <div class="cover-meta-item">
-      <span class="cover-meta-label">Дата проведения</span>
+      <span class="cover-meta-label">${msg.sections.coverDate}</span>
       <span class="cover-meta-value">${d.date}</span>
     </div>
     <div class="cover-meta-item">
-      <span class="cover-meta-label">Выявлено проблем</span>
-      <span class="cover-meta-value">${d.totalIssues} точек роста</span>
+      <span class="cover-meta-label">${msg.sections.coverIssues}</span>
+      <span class="cover-meta-value">${issuesValue}</span>
     </div>
     <div class="cover-meta-item">
-      <span class="cover-meta-label">Критических</span>
-      <span class="cover-meta-value" style="color:#f87171">${d.criticalCount} критических</span>
+      <span class="cover-meta-label">${msg.sections.coverCritical}</span>
+      <span class="cover-meta-value" style="color:#f87171">${criticalValue}</span>
     </div>
     <div class="cover-meta-item">
-      <span class="cover-meta-label">Версия документа</span>
+      <span class="cover-meta-label">${msg.sections.coverVersion}</span>
       <span class="cover-meta-value">${d.version}</span>
     </div>
   </div>
   <div style="margin-top:40px">
-    <div class="cover-status">⚠ Статус: ${d.statusText}</div>
+    <div class="cover-status">${msg.sections.coverStatusLabel}: ${d.statusText}</div>
   </div>
 </div>`;
 }
@@ -105,16 +119,18 @@ function buildMetrics(d: AuditReport): string {
 }
 
 function buildExecSummary(d: AuditReport): string {
+  const msg = getReportMessages(d.locale);
   const paragraphs = d.execSummaryParagraphs.map((p) => `<p>${p}</p>`).join('');
   return `
 <div class="exec-summary">
-  <div class="section-label">Executive Summary</div>
-  <h2>Краткое резюме</h2>
+  <div class="section-label">${msg.sections.execSummaryLabel}</div>
+  <h2>${msg.sections.execSummaryTitle}</h2>
   ${paragraphs}
 </div>`;
 }
 
-function buildToc(blocks: AuditBlock[]): string {
+function buildToc(blocks: AuditBlock[], locale: AuditReport['locale']): string {
+  const msg = getReportMessages(locale);
   const items = blocks
     .flatMap((b) => b.issues)
     .map(
@@ -127,13 +143,14 @@ function buildToc(blocks: AuditBlock[]): string {
     .join('');
   return `
 <div class="toc">
-  <h2>Содержание аудита</h2>
+  <h2>${msg.sections.tocTitle}</h2>
   <ul class="toc-list">${items}</ul>
 </div>`;
 }
 
-function buildIssueCard(issue: AuditIssue): string {
-  const badge = severityBadge(issue.severity);
+function buildIssueCard(issue: AuditIssue, locale: AuditReport['locale']): string {
+  const msg = getReportMessages(locale);
+  const badge = severityBadge(issue.severity, locale);
   const tags = issue.tags.map((t) => `<span class="${tagClass(t)}">${t}</span>`).join('');
   return `
 <article class="issue-card audit-item">
@@ -147,19 +164,19 @@ function buildIssueCard(issue: AuditIssue): string {
   </div>
   <div class="issue-body">
     <div class="symptom-block">
-      <div class="block-title">Что зафиксировано</div>
+      <div class="block-title">${msg.labels.whatRecorded}</div>
       <div class="block-text">${issue.symptom}</div>
     </div>
     <div class="impact-block">
-      <div class="block-title">Влияние на SEO и бизнес</div>
+      <div class="block-title">${msg.labels.impactOnSeo}</div>
       <div class="block-text">${issue.impact}</div>
     </div>
   </div>
 </article>`;
 }
 
-function buildBlock(block: AuditBlock): string {
-  const cards = block.issues.map(buildIssueCard).join('');
+function buildBlock(block: AuditBlock, locale: AuditReport['locale']): string {
+  const cards = block.issues.map((issue) => buildIssueCard(issue, locale)).join('');
   return `
 <div class="block-section">
   <div class="block-header" style="background:${block.gradient}">
@@ -173,7 +190,8 @@ function buildBlock(block: AuditBlock): string {
 </div>`;
 }
 
-function buildSummaryTable(blocks: AuditBlock[]): string {
+function buildSummaryTable(blocks: AuditBlock[], locale: AuditReport['locale']): string {
+  const msg = getReportMessages(locale);
   const rows = blocks
     .flatMap((b) =>
       b.issues.map((issue) => {
@@ -184,7 +202,7 @@ function buildSummaryTable(blocks: AuditBlock[]): string {
       <td>${pad(issue.id)}</td>
       <td>${issue.title}</td>
       <td>${blockShort}</td>
-      <td><span class="tag tag-${issue.severity}">${severityTagLabel(issue.severity)}</span></td>
+      <td><span class="tag tag-${issue.severity}">${severityTagLabel(issue.severity, locale)}</span></td>
     </tr>`;
       })
     )
@@ -192,9 +210,9 @@ function buildSummaryTable(blocks: AuditBlock[]): string {
 
   return `
 <div class="summary-table-section">
-  <div class="section-label">Сводная таблица</div>
-  <h2>Все выявленные проблемы</h2>
-  <p class="sub">Полный список с приоритетами и категориями для удобного планирования</p>
+  <div class="section-label">${msg.sections.summaryLabel}</div>
+  <h2>${msg.sections.summaryTitle}</h2>
+  <p class="sub">${msg.sections.summarySubtitle}</p>
   <table class="data-table">
     <thead>
       <tr>
@@ -210,37 +228,39 @@ function buildSummaryTable(blocks: AuditBlock[]): string {
 }
 
 function buildConclusion(d: AuditReport): string {
+  const msg = getReportMessages(d.locale);
   const paragraphs = d.conclusionParagraphs.map((p) => `<p>${p}</p>`).join('');
   return `
 <div class="conclusion">
-  <div class="section-label" style="color:#93c5fd;margin-bottom:8px">Заключение</div>
-  <h2>Резюме</h2>
+  <div class="section-label" style="color:#93c5fd;margin-bottom:8px">${msg.sections.conclusionLabel}</div>
+  <h2>${msg.sections.conclusionTitle}</h2>
   ${paragraphs}
 </div>
 <div class="footer">
-  <strong>Технический SEO-аудит · ${d.domain}</strong><br/>
-  Дата проведения: ${d.date} · Версия документа: ${d.version}<br/>
-  Документ подготовлен для внутреннего использования.
+  <strong>${msg.sections.footerPrefix} ${d.domain}</strong><br/>
+  ${msg.sections.coverDate}: ${d.date} · ${msg.sections.coverVersion}: ${d.version}<br/>
+  ${msg.sections.footerPrepared}
 </div>`;
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export function buildReportHtml(data: AuditReport): string {
+  const locale = data.locale ?? 'ru';
   const body = [
     buildCover(data),
     '<div class="page-wrap">',
     buildMetrics(data),
     buildExecSummary(data),
-    buildToc(data.blocks),
-    ...data.blocks.map(buildBlock),
-    buildSummaryTable(data.blocks),
+    buildToc(data.blocks, locale),
+    ...data.blocks.map((block) => buildBlock(block, locale)),
+    buildSummaryTable(data.blocks, locale),
     buildConclusion(data),
     '</div>',
   ].join('\n');
 
   return `<!DOCTYPE html>
-<html lang="ru">
+<html lang="${locale}">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>

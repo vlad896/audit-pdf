@@ -62,7 +62,10 @@ export async function POST(req: NextRequest) {
     });
 
     const safeDomain = report.domain.replace(/[\s\\/:*?"<>|]/g, '-').replace(/-+/g, '-') || 'audit';
-    const filenameUtf8 = `Технический SEO-аудит — ${safeDomain}.pdf`;
+    const isEn = (report.locale ?? 'ru') === 'en';
+    const filenameUtf8 = isEn
+      ? `Technical SEO Audit — ${safeDomain}.pdf`
+      : `Технический SEO-аудит — ${safeDomain}.pdf`;
     const filenameAscii = `seo-audit-${safeDomain}.pdf`;
     const filenameEncoded = encodeURIComponent(filenameUtf8);
     const buffer = Buffer.from(pdfBuffer);

@@ -9,6 +9,8 @@ The PDF is produced from a **single source**:
 
 Flow: `POST /api/generate-pdf` → validate body (Zod) → `buildReportHtml(data)` → Puppeteer `setContent(html)` → `page.pdf()` → response with PDF buffer.
 
+The `AuditReport` payload supports a `locale` field (`'ru' | 'en'`). All system labels and section titles inside the report HTML are resolved through dictionaries in `src/i18n/report.ts`, so switching the locale automatically changes headings like the cover badge, executive summary title, table-of-contents caption, summary table labels, and conclusion headings.
+
 React components previously used for a possible in-browser preview (`ReportLayout`, `TitlePage`, `BlockSection`, `IssueCard`) were removed to avoid duplication and drift with the string-based report. Any future preview should reuse the same HTML (e.g. from `buildReportHtml`) or a shared template.
 
 ## Security / Trust model

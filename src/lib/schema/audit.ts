@@ -54,6 +54,7 @@ export const AuditReportSchema = z.object({
   totalIssues: z.number().int().min(0),
   criticalCount: z.number().int().min(0),
   statusText: z.string(),
+  locale: z.enum(['ru', 'en']).optional().default('ru'),
   execSummaryParagraphs: z.array(z.string()),
   metrics: z.array(AuditMetricSchema),
   blocks: z.array(AuditBlockSchema),

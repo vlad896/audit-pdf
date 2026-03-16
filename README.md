@@ -38,3 +38,28 @@ Copy [.env.example](.env.example) to `.env.local` and adjust:
 ## PDF source
 
 The PDF is built from a single source: [src/lib/buildReportHtml.ts](src/lib/buildReportHtml.ts) (HTML string builder) and [src/styles/report.css](src/styles/report.css). See [ARCHITECTURE.md](ARCHITECTURE.md) for details.
+
+### Localisation
+
+The audit payload accepts an optional `locale` field:
+
+```json
+{
+  "clientName": "Client",
+  "domain": "example.com",
+  "date": "2026-01",
+  "version": "v1.0",
+  "totalIssues": 3,
+  "criticalCount": 1,
+  "statusText": "Status text…",
+  "locale": "en",
+  "execSummaryParagraphs": ["..."],
+  "metrics": [],
+  "blocks": [],
+  "conclusionParagraphs": ["..."]
+}
+```
+
+- `locale` can be `'ru'` (default) or `'en'`.
+- System labels and headings inside the PDF (cover badge, section titles, summary table captions, conclusion header, etc.) are resolved via dictionaries in `src/i18n/report.ts`.
+- The dashboard has a language toggle; the selected language is injected into the payload before sending it to `/api/generate-pdf`.

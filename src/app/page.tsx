@@ -9,6 +9,8 @@ import GenerateActions from '@/components/dashboard/GenerateActions';
 import HowItWorks from '@/components/dashboard/HowItWorks';
 import SchemaTable from '@/components/dashboard/SchemaTable';
 import DeployCard from '@/components/dashboard/DeployCard';
+import type { Locale } from '@/i18n/report';
+import { getUiMessages } from '@/i18n/ui';
 
 const PLACEHOLDER = JSON.stringify(sampleAudit, null, 2);
 
@@ -17,6 +19,8 @@ export default function DashboardPage() {
   const [status, setStatus] = useState<Status>(STATUS.IDLE);
   const [errorMsg, setError] = useState('');
   const [jsonError, setJsonError] = useState('');
+  const [locale, setLocale] = useState<Locale>('ru');
+  const ui = getUiMessages(locale);
 
   function validateJson(value: string) {
     try {
@@ -36,10 +40,15 @@ export default function DashboardPage() {
     setError('');
 
     try {
+      // Ensure locale is present in payload before sending to API
+      const parsed = JSON.parse(json) as Record<string, unknown>;
+      parsed.locale = locale;
+      const body = JSON.stringify(parsed);
+
       const res = await fetch('/api/generate-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: json,
+        body,
       });
 
       if (!res.ok) {
@@ -58,12 +67,15 @@ export default function DashboardPage() {
       const a = document.createElement('a');
       a.href = url;
       try {
-        const data = JSON.parse(json) as { domain?: string };
+        const data = parsed as { domain?: string };
         const raw = data?.domain ?? 'отчет';
         const safe = String(raw).replace(/[\s\\/:*?"<>|]/g, '-').replace(/-+/g, '-') || 'audit';
-        a.download = `Технический SEO-аудит — ${safe}.pdf`;
+        a.download =
+          locale === 'en'
+            ? `Technical SEO Audit — ${safe}.pdf`
+            : `Технический SEO-аудит — ${safe}.pdf`;
       } catch {
-        a.download = 'Технический SEO-аудит.pdf';
+        a.download = locale === 'en' ? 'Technical SEO Audit.pdf' : 'Технический SEO-аудит.pdf';
       }
       a.click();
       URL.revokeObjectURL(url);
@@ -83,7 +95,7 @@ export default function DashboardPage() {
 
   return (
     <main className="dashboard-main">
-      <DashboardHeader />
+      <DashboardHeader locale={locale} onChangeLocale={setLocale} />
 
       <div className="dashboard-layout">
         <div className="dashboard-card">
@@ -103,6 +115,7 @@ export default function DashboardPage() {
             }}
             onGenerate={handleGenerate}
             errorMsg={errorMsg}
+            locale={locale}
           />
         </div>
 

@@ -60,6 +60,8 @@ export interface AuditReport {
   totalIssues: number;
   criticalCount: number;
   statusText: string;
+  /** Report language, defaults to Russian ("ru") if omitted */
+  locale?: 'ru' | 'en';
   /** Each string renders as a separate <p> in the Executive Summary */
   execSummaryParagraphs: string[];
   metrics: AuditMetric[];
